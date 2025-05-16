@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>LinkNotes App</title>
+  <style>
+    body { font-family: sans-serif; max-width: 600px; margin: auto; padding: 20px; }
+    input, textarea, button { width: 100%; margin: 10px 0; padding: 10px; }
+    .entry { border-bottom: 1px solid #ccc; padding: 10px 0; }
+    .entry h3 { margin: 0; }
+    small { color: #888; }
+  </style>
+</head>
+<body>
+  <h1>Save a Link + Note</h1>
+  <form id="noteForm">
+    <input type="text" id="title" placeholder="Title" required>
+    <input type="url" id="url" placeholder="URL" required>
+    <textarea id="note" placeholder="Write your note..." required></textarea>
+    <button type="submit">Save</button>
+  </form>
+
+  <h2>Saved Notes</h2>
+  <div id="entries"></div>
+
+  <!-- Firebase JS SDK -->
+  <script type="module">
+    // Import Firebase
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-app.js";
+    import { getFirestore, collection, addDoc, getDocs, serverTimestamp, query, orderBy } from "https://www.gstatic.com/firebasejs/10.11.0/firebase-firestore.js";
+
+    // TODO: Replace with your Firebase config
+    const firebaseConfig = {
+      apiKey: "YOUR_API_KEY",
+      authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+      projectId: "YOUR_PROJECT_ID",
+      storageBucket: "YOUR_PROJECT_ID.appspot.com",
+      messagingSenderId: "YOUR_SENDER_ID",
+      appId: "YOUR_APP_ID"
+    };
+
+    // Init Firebase
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    const notesCol = collection(db, "notes");
+
+    // Save new entry
+    document.getElementById("noteForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const title = document.getElementById("title").value;
+      const url = document.getElementById("url").value;
+      const note = document.getElementById("note").value;
+
+      await addDoc(notesCol, {
+        title,
+        url,
+        note,
+        created: serverTimestamp()
+      });
+
+      document.getElementById("noteForm").reset();
+      loadNotes();
+    });
+
+    // Load all entries
+    async function loadNotes() {
+      const entriesDiv = document.getElementById("entries");
+      entriesDiv.innerHTML = "";
+
+      const q = query(notesCol, orderBy("created", "desc"));
+      const querySnapshot = await getDocs(q);
+      querySnapshot.forEach((doc) => {
+        const data = doc.data();
+        const div = document.createElement("div");
+        div.className = "entry";
+        div.innerHTML = `
+          <h3><a href="${data.url}" target="_blank">${data.title}</a></h3>
+          <p>${data.note}</p>
+          <small>${data.created?.toDate().toLocaleString() || ""}</small>
+        `;
+        entriesDiv.appendChild(div);
+      });
+    }
+
+    loadNotes();
+  </script>
+</body>
+</html>
